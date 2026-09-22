@@ -843,11 +843,13 @@ function calificarServicio(servicio, calificacion) {
 
       <!-- LISTA DE SERVICIOS -->
 
-      <div
-        v-for="servicio in servicios"
-        :key="servicio.id"
-        class="q-mb-md"
-      >
+      <div class="services-grid">
+
+        <div
+          v-for="servicio in servicios"
+          :key="servicio.id"
+          class="service-grid-item"
+        >
 
         <q-card
           bordered
@@ -1299,7 +1301,9 @@ function calificarServicio(servicio, calificacion) {
 
           </q-card-actions>
 
-        </q-card>
+          </q-card>
+
+        </div>
 
       </div>
 
@@ -1697,15 +1701,26 @@ function calificarServicio(servicio, calificacion) {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.service-grid-item {
+  min-width: 0;
+}
+
 .service-card {
   background: white;
-  border-radius: 12px;
+  height: 100%;
+  border-radius: 10px;
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .service-card :deep(.q-card__section) {
-  padding: 12px 16px;
+  padding: 9px 12px;
 }
 
 .service-card :deep(.service-card-content) {
@@ -1713,19 +1728,19 @@ function calificarServicio(servicio, calificacion) {
 }
 
 .service-card :deep(.q-mb-md) {
-  margin-bottom: 10px !important;
+  margin-bottom: 7px !important;
 }
 
 .service-card :deep(.q-mt-md) {
-  margin-top: 10px !important;
+  margin-top: 7px !important;
 }
 
 .service-card :deep(.q-mt-lg) {
-  margin-top: 14px !important;
+  margin-top: 9px !important;
 }
 
 .service-card-actions {
-  padding: 8px 16px 12px;
+  padding: 5px 12px 8px;
 }
 
 .service-card:hover {
@@ -1748,7 +1763,24 @@ function calificarServicio(servicio, calificacion) {
 .info-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
+}
+
+.service-card :deep(.text-body1) {
+  font-size: 15px;
+}
+
+.service-card :deep(.text-h6) {
+  font-size: 18px;
+}
+
+.service-card :deep(.q-avatar) {
+  width: 38px;
+  height: 38px;
+}
+
+.service-card :deep(.q-chip) {
+  margin: 2px;
 }
 
 .payment-detail {
@@ -1813,6 +1845,10 @@ function calificarServicio(servicio, calificacion) {
 
   .form-dialog {
     width: 100%;
+  }
+
+  .services-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>
