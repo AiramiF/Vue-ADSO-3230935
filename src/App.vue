@@ -1,9 +1,31 @@
 <script setup>
 import { ref } from 'vue'
-import { useLocalStorage } from '@vueuse/core'
 import { Dialog } from 'quasar'
 
-const servicios = useLocalStorage('servicios-tecnicos', [])
+function cargarServicios() {
+  const serviciosGuardados = localStorage.getItem('servicios-tecnicos')
+
+  if (!serviciosGuardados) {
+    return []
+  }
+
+  try {
+    return JSON.parse(serviciosGuardados)
+  } catch (error) {
+    return []
+  }
+}
+
+
+const servicios = ref(cargarServicios())
+
+
+function guardarServicios() {
+  localStorage.setItem(
+    'servicios-tecnicos',
+    JSON.stringify(servicios.value)
+  )
+}
 
 const mostrarModal = ref(false)
 const editando = ref(false)
@@ -389,6 +411,8 @@ function guardarServicio() {
 
         observaciones: quitarEspacios(formulario.value.observaciones)
       }
+
+      guardarServicios()
     }
   }
 
@@ -447,6 +471,8 @@ function guardarServicio() {
     }
 
     servicios.value.push(nuevoServicio)
+
+    guardarServicios()
   }
 
   mostrarModal.value = false
@@ -562,6 +588,8 @@ function eliminarServicio(servicio) {
     servicios.value = servicios.value.filter(
       item => item.id !== servicio.id
     )
+
+    guardarServicios()
 
   })
 }
@@ -685,6 +713,7 @@ function calificarServicio(servicio, calificacion) {
   }
 
   servicio.calificacion = calificacion
+  guardarServicios()
 }
 </script>
 
@@ -1444,15 +1473,7 @@ function calificarServicio(servicio, calificacion) {
               readonly
               disable
               hint="Se registra automáticamente"
-            >
-
-              <template #prepend>
-
-                <q-icon name="event" />
-
-              </template>
-
-            </q-input>
+            />
 
 
             <!-- PRECIO -->
