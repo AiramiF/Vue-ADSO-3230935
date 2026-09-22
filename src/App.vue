@@ -8,6 +8,7 @@ const servicios = useLocalStorage('servicios-tecnicos', [])
 const mostrarModal = ref(false)
 const editando = ref(false)
 const idEditando = ref(null)
+const estadoEquipoOriginal = ref(null)
 
 const formulario = ref({
   cliente: '',
@@ -142,6 +143,8 @@ function limpiarFormulario() {
     calificacion: null,
     observaciones: ''
   }
+
+  estadoEquipoOriginal.value = null
 }
 
 
@@ -155,6 +158,33 @@ function abrirNuevoServicio() {
   idEditando.value = null
 
   mostrarModal.value = true
+}
+
+
+function revisarEstadoPago() {
+  if (
+    formulario.value.estadoPago !== 'Pagado' &&
+    formulario.value.estadoEquipo === 'Entregado'
+  ) {
+    formulario.value.estadoEquipo = 'Listo para entregar'
+    formulario.value.calificacion = null
+  }
+}
+
+
+function revisarEstadoEquipo() {
+  if (formulario.value.estadoEquipo !== 'Entregado') {
+    formulario.value.calificacion = null
+  }
+}
+
+
+function obtenerEstadosEquipoDisponibles() {
+  if (formulario.value.estadoPago === 'Pagado') {
+    return estadosEquipo
+  }
+
+  return estadosEquipo.filter(estado => estado !== 'Entregado')
 }
 
 
@@ -495,6 +525,7 @@ function editarServicio(servicio) {
   }
 
   idEditando.value = servicio.id
+  estadoEquipoOriginal.value = servicio.estadoEquipo
   editando.value = true
 
   mostrarModal.value = true
@@ -645,6 +676,15 @@ function estrellaActiva(numero, calificacion) {
   }
 
   return numero <= calificacion
+}
+
+
+function calificarServicio(servicio, calificacion) {
+  if (servicio.estadoEquipo !== 'Entregado') {
+    return
+  }
+
+  servicio.calificacion = calificacion
 }
 </script>
 
@@ -1107,8 +1147,7 @@ function estrellaActiva(numero, calificacion) {
 
             <div
               v-if="
-                servicio.estadoEquipo === 'Entregado' &&
-                servicio.calificacion
+                servicio.estadoEquipo === 'Entregado'
               "
               class="q-mt-md"
             >
@@ -1117,21 +1156,24 @@ function estrellaActiva(numero, calificacion) {
                 Calificación del cliente
               </div>
 
-              <div>
+              <div class="row q-gutter-sm">
 
-                <q-icon
+                <q-btn
                   v-for="estrella in 5"
                   :key="estrella"
-                  name="star"
-                  size="28px"
-                  :color="
+                  flat
+                  round
+                  size="md"
+                  :icon="
                     estrellaActiva(
                       estrella,
                       servicio.calificacion
                     )
-                      ? 'warning'
-                      : 'grey-4'
+                      ? 'star'
+                      : 'star_border'
                   "
+                  color="warning"
+                  @click="calificarServicio(servicio, estrella)"
                 />
 
               </div>
@@ -1168,9 +1210,6 @@ function estrellaActiva(numero, calificacion) {
           >
 
             <div
-              v-if="
-                servicio.estadoEquipo !== 'Entregado'
-              "
               class="row q-gutter-sm"
             >
 
@@ -1180,6 +1219,7 @@ function estrellaActiva(numero, calificacion) {
                 icon="edit"
                 label="Editar"
                 size="md"
+                :disable="servicio.estadoEquipo === 'Entregado'"
                 @click="editarServicio(servicio)"
               />
 
@@ -1189,6 +1229,7 @@ function estrellaActiva(numero, calificacion) {
                 icon="delete"
                 label="Eliminar"
                 size="md"
+                :disable="servicio.estadoEquipo === 'Entregado'"
                 @click="eliminarServicio(servicio)"
               />
 
@@ -1196,7 +1237,7 @@ function estrellaActiva(numero, calificacion) {
 
 
             <q-badge
-              v-else
+              v-if="servicio.estadoEquipo === 'Entregado'"
               color="grey"
               icon="lock"
               label="Registro bloqueado"
@@ -1460,6 +1501,7 @@ function estrellaActiva(numero, calificacion) {
               label="Estado del pago *"
               outlined
               lazy-rules
+              @update:model-value="revisarEstadoPago"
               :rules="[
                 val =>
                   !!val ||
@@ -1502,60 +1544,17 @@ function estrellaActiva(numero, calificacion) {
 
             <q-select
               v-model="formulario.estadoEquipo"
-              :options="estadosEquipo"
+              :options="obtenerEstadosEquipoDisponibles()"
               label="Estado del equipo *"
               outlined
               lazy-rules
+              @update:model-value="revisarEstadoEquipo"
               :rules="[
                 val =>
                   !!val ||
                   'Seleccione el estado del equipo'
               ]"
             />
-
-
-            <!-- CALIFICACIÓN -->
-
-            <div
-              v-if="
-                formulario.estadoEquipo === 'Entregado'
-              "
-              class="rating-section"
-            >
-
-              <div class="text-subtitle1 text-weight-medium">
-                Calificación del cliente
-              </div>
-
-              <div class="text-body2 text-grey-7 q-mb-sm">
-                Registre la calificación cuando el cliente recoja el equipo.
-              </div>
-
-              <div class="row q-gutter-sm">
-
-                <q-btn
-                  v-for="estrella in 5"
-                  :key="estrella"
-                  flat
-                  round
-                  :icon="
-                    estrellaActiva(
-                      estrella,
-                      formulario.calificacion
-                    )
-                      ? 'star'
-                      : 'star_border'
-                  "
-                  color="warning"
-                  size="lg"
-                  @click="
-                    formulario.calificacion = estrella
-                  "
-                />
-
-              </div>
-
-            </div>
 
 
             <!-- OBSERVACIONES -->
@@ -1596,6 +1595,10 @@ function estrellaActiva(numero, calificacion) {
                 icon="save"
                 unelevated
                 size="md"
+                :disable="
+                  editando &&
+                  estadoEquipoOriginal === 'Entregado'
+                "
               />
 
             </div>
