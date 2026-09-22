@@ -42,9 +42,11 @@ const formulario = ref({
   tecnico: '',
   fecha: '',
   precio: null,
+  precioTexto: '',
   metodoPago: '',
   estadoPago: '',
   abono: null,
+  abonoTexto: '',
   estadoEquipo: 'Recibido',
   calificacion: null,
   observaciones: ''
@@ -158,9 +160,11 @@ function limpiarFormulario() {
     tecnico: '',
     fecha: '',
     precio: null,
+    precioTexto: '',
     metodoPago: '',
     estadoPago: '',
     abono: null,
+    abonoTexto: '',
     estadoEquipo: 'Recibido',
     calificacion: null,
     observaciones: ''
@@ -198,6 +202,33 @@ function revisarEstadoEquipo() {
   if (formulario.value.estadoEquipo !== 'Entregado') {
     formulario.value.calificacion = null
   }
+}
+
+
+function formatearEntradaMoneda(valor) {
+  const numeros = String(valor || '').replace(/\D/g, '')
+
+  if (!numeros) {
+    return ''
+  }
+
+  return Number(numeros).toLocaleString('es-CO')
+}
+
+
+function actualizarPrecio(valor) {
+  const numeros = String(valor || '').replace(/\D/g, '')
+
+  formulario.value.precioTexto = formatearEntradaMoneda(valor)
+  formulario.value.precio = numeros ? Number(numeros) : null
+}
+
+
+function actualizarAbono(valor) {
+  const numeros = String(valor || '').replace(/\D/g, '')
+
+  formulario.value.abonoTexto = formatearEntradaMoneda(valor)
+  formulario.value.abono = numeros ? Number(numeros) : null
 }
 
 
@@ -536,12 +567,14 @@ function editarServicio(servicio) {
     fecha: servicio.fecha,
 
     precio: servicio.precio,
+    precioTexto: formatearEntradaMoneda(servicio.precio),
 
     metodoPago: servicio.metodoPago,
 
     estadoPago: servicio.estadoPago,
 
     abono: servicio.abono,
+    abonoTexto: formatearEntradaMoneda(servicio.abono),
 
     estadoEquipo: servicio.estadoEquipo,
 
@@ -831,7 +864,7 @@ function calificarServicio(servicio, calificacion) {
           }"
         >
 
-          <q-card-section>
+          <q-card-section class="service-card-header">
 
             <div class="row items-start justify-between">
 
@@ -874,7 +907,7 @@ function calificarServicio(servicio, calificacion) {
           </q-card-section>
 
 
-          <q-card-section class="q-pt-none">
+          <q-card-section class="service-card-content q-pt-none">
 
             <!-- MARCA -->
 
@@ -1234,8 +1267,9 @@ function calificarServicio(servicio, calificacion) {
           <!-- BOTONES -->
 
           <q-card-actions
+            v-if="servicio.estadoEquipo !== 'Entregado'"
             align="right"
-            class="q-pa-md"
+            class="service-card-actions"
           >
 
             <div
@@ -1248,7 +1282,6 @@ function calificarServicio(servicio, calificacion) {
                 icon="edit"
                 label="Editar"
                 size="md"
-                :disable="servicio.estadoEquipo === 'Entregado'"
                 @click="editarServicio(servicio)"
               />
 
@@ -1258,20 +1291,11 @@ function calificarServicio(servicio, calificacion) {
                 icon="delete"
                 label="Eliminar"
                 size="md"
-                :disable="servicio.estadoEquipo === 'Entregado'"
                 @click="eliminarServicio(servicio)"
               />
 
             </div>
 
-
-            <q-badge
-              v-if="servicio.estadoEquipo === 'Entregado'"
-              color="grey"
-              icon="lock"
-              label="Registro bloqueado"
-              class="text-body2"
-            />
 
           </q-card-actions>
 
@@ -1467,7 +1491,7 @@ function calificarServicio(servicio, calificacion) {
             <!-- FECHA -->
 
             <q-input
-              v-model="formulario.fecha"
+              :model-value="formatearFecha(formulario.fecha)"
               label="Fecha y hora de recepción"
               outlined
               readonly
@@ -1479,20 +1503,21 @@ function calificarServicio(servicio, calificacion) {
             <!-- PRECIO -->
 
             <q-input
-              v-model.number="formulario.precio"
-              type="number"
+              v-model="formulario.precioTexto"
+              type="text"
               label="Precio cobrado *"
               prefix="$"
+              inputmode="numeric"
               outlined
               lazy-rules
+              @update:model-value="actualizarPrecio"
               :rules="[
-                val =>
-                  val !== null &&
-                  val !== '' ||
+                () =>
+                  formulario.precio !== null ||
                   'Ingrese el precio',
 
-                val =>
-                  Number(val) >= 0 ||
+                () =>
+                  formulario.precio >= 0 ||
                   'El precio no puede ser negativo'
               ]"
             />
@@ -1537,25 +1562,26 @@ function calificarServicio(servicio, calificacion) {
               v-if="
                 formulario.estadoPago === 'Abono'
               "
-              v-model.number="formulario.abono"
-              type="number"
+              v-model="formulario.abonoTexto"
+              type="text"
               label="Valor del abono *"
               prefix="$"
+              inputmode="numeric"
               outlined
               lazy-rules
+              @update:model-value="actualizarAbono"
               :rules="[
-                val =>
-                  val !== null &&
-                  val !== '' ||
+                () =>
+                  formulario.abono !== null ||
                   'Ingrese el valor del abono',
 
-                val =>
-                  Number(val) > 0 ||
+                () =>
+                  formulario.abono > 0 ||
                   'El abono debe ser mayor a $0',
 
-                val =>
-                  Number(val) <=
-                  Number(formulario.precio) ||
+                () =>
+                  formulario.abono <=
+                  formulario.precio ||
                   'El abono no puede ser igual o mayor al precio'
               ]"
             />
@@ -1564,6 +1590,7 @@ function calificarServicio(servicio, calificacion) {
             <!-- ESTADO DEL EQUIPO -->
 
             <q-select
+              v-if="editando"
               v-model="formulario.estadoEquipo"
               :options="obtenerEstadosEquipoDisponibles()"
               label="Estado del equipo *"
@@ -1575,6 +1602,15 @@ function calificarServicio(servicio, calificacion) {
                   !!val ||
                   'Seleccione el estado del equipo'
               ]"
+            />
+
+            <q-input
+              v-else
+              v-model="formulario.estadoEquipo"
+              label="Estado del equipo"
+              outlined
+              readonly
+              disable
             />
 
 
@@ -1633,8 +1669,8 @@ function calificarServicio(servicio, calificacion) {
     </q-dialog>
 
   </div>
-</template>
 
+</template>
 
 <style scoped>
 .app-container {
@@ -1663,9 +1699,33 @@ function calificarServicio(servicio, calificacion) {
 
 .service-card {
   background: white;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.service-card :deep(.q-card__section) {
+  padding: 12px 16px;
+}
+
+.service-card :deep(.service-card-content) {
+  padding-top: 0;
+}
+
+.service-card :deep(.q-mb-md) {
+  margin-bottom: 10px !important;
+}
+
+.service-card :deep(.q-mt-md) {
+  margin-top: 10px !important;
+}
+
+.service-card :deep(.q-mt-lg) {
+  margin-top: 14px !important;
+}
+
+.service-card-actions {
+  padding: 8px 16px 12px;
 }
 
 .service-card:hover {
@@ -1688,14 +1748,14 @@ function calificarServicio(servicio, calificacion) {
 .info-item {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 8px;
 }
 
 .payment-detail {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
+  gap: 8px;
+  padding: 8px 10px;
   background: #fff8e1;
   border-radius: 8px;
   font-size: 17px;
@@ -1703,8 +1763,8 @@ function calificarServicio(servicio, calificacion) {
 
 .observation-box {
   display: flex;
-  gap: 12px;
-  padding: 14px;
+  gap: 8px;
+  padding: 10px;
   background: #f5f5f5;
   border-radius: 10px;
 }
