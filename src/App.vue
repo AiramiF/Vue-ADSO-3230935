@@ -78,6 +78,38 @@ const estadosEquipo = [
   'Entregado'
 ]
 
+const limitesTexto = {
+  cliente: 60,
+  marca: 40,
+  modelo: 50,
+  reparacion: 100,
+  observaciones: 250
+}
+
+
+function tieneLetras(texto) {
+  return typeof texto === 'string' && /[A-Za-zÁÉÍÓÚÜüÑñ]/.test(texto)
+}
+
+
+function validarTexto(texto, mensaje) {
+  return tieneLetras(texto) || mensaje
+}
+
+
+function validarTextoOpcional(texto) {
+  return !texto || tieneLetras(texto) || 'Escriba letras o deje el campo vacío'
+}
+
+
+function quitarEspacios(texto) {
+  if (typeof texto !== 'string') {
+    return texto
+  }
+
+  return texto.trim()
+}
+
 
 function obtenerFechaActual() {
   const ahora = new Date()
@@ -155,7 +187,7 @@ function revisarReparaciones() {
 function guardarServicio() {
   // VALIDACIONES MANUALES
 
-  if (!formulario.value.cliente) {
+  if (!tieneLetras(formulario.value.cliente)) {
     return
   }
 
@@ -166,12 +198,12 @@ function guardarServicio() {
   // Si escogió "Otra", debe escribir la marca
   if (
     formulario.value.marca === 'Otra' &&
-    !formulario.value.otraMarca
+    !tieneLetras(formulario.value.otraMarca)
   ) {
     return
   }
 
-  if (!formulario.value.modelo) {
+  if (!tieneLetras(formulario.value.modelo)) {
     return
   }
 
@@ -185,7 +217,7 @@ function guardarServicio() {
   // Si escogió "Otros", debe especificar la reparación
   if (
     formulario.value.reparacion.includes('Otros') &&
-    !formulario.value.otraReparacion
+    !tieneLetras(formulario.value.otraReparacion)
   ) {
     return
   }
@@ -219,6 +251,44 @@ function guardarServicio() {
     return
   }
 
+  if (
+    formulario.value.estadoPago === 'Abono' &&
+    Number(formulario.value.abono) === Number(formulario.value.precio)
+  ) {
+    Dialog.create({
+      title: 'Abono completado',
+      message:
+        'Ya se abonó la totalidad del arreglo. Cambie el estado del pago a Pagado para poder continuar.'
+    })
+
+    return
+  }
+
+  if (
+    formulario.value.estadoPago === 'Abono' &&
+    Number(formulario.value.abono) > Number(formulario.value.precio)
+  ) {
+    Dialog.create({
+      title: 'Abono no válido',
+      message: 'El abono no puede ser mayor al valor total del arreglo.'
+    })
+
+    return
+  }
+
+  if (
+    formulario.value.estadoEquipo === 'Entregado' &&
+    formulario.value.estadoPago !== 'Pagado'
+  ) {
+    Dialog.create({
+      title: 'No se puede entregar el equipo',
+      message:
+        'No se puede entregar el equipo hasta que se haya cancelado por completo el arreglo.'
+    })
+
+    return
+  }
+
   /*
    * Si se está editando
    */
@@ -239,12 +309,12 @@ function guardarServicio() {
       servicios.value[indice] = {
         id: idEditando.value,
 
-        cliente: formulario.value.cliente,
+        cliente: quitarEspacios(formulario.value.cliente),
 
         // Guardamos la marca personalizada si corresponde
         marca:
           formulario.value.marca === 'Otra'
-            ? formulario.value.otraMarca
+            ? quitarEspacios(formulario.value.otraMarca)
             : formulario.value.marca,
 
         // Guardamos también que fue personalizada
@@ -252,16 +322,16 @@ function guardarServicio() {
 
         otraMarca:
           formulario.value.marca === 'Otra'
-            ? formulario.value.otraMarca
+            ? quitarEspacios(formulario.value.otraMarca)
             : '',
 
-        modelo: formulario.value.modelo,
+        modelo: quitarEspacios(formulario.value.modelo),
 
         reparacion: formulario.value.reparacion,
 
         otraReparacion:
           formulario.value.reparacion.includes('Otros')
-            ? formulario.value.otraReparacion
+            ? quitarEspacios(formulario.value.otraReparacion)
             : '',
 
         tecnico: formulario.value.tecnico,
@@ -287,7 +357,7 @@ function guardarServicio() {
             ? formulario.value.calificacion
             : null,
 
-        observaciones: formulario.value.observaciones
+        observaciones: quitarEspacios(formulario.value.observaciones)
       }
     }
   }
@@ -299,27 +369,27 @@ function guardarServicio() {
     const nuevoServicio = {
       id: Date.now(),
 
-      cliente: formulario.value.cliente,
+      cliente: quitarEspacios(formulario.value.cliente),
 
       marca:
         formulario.value.marca === 'Otra'
-          ? formulario.value.otraMarca
+          ? quitarEspacios(formulario.value.otraMarca)
           : formulario.value.marca,
 
       marcaOriginal: formulario.value.marca,
 
       otraMarca:
         formulario.value.marca === 'Otra'
-          ? formulario.value.otraMarca
+          ? quitarEspacios(formulario.value.otraMarca)
           : '',
 
-      modelo: formulario.value.modelo,
+      modelo: quitarEspacios(formulario.value.modelo),
 
       reparacion: formulario.value.reparacion,
 
       otraReparacion:
         formulario.value.reparacion.includes('Otros')
-          ? formulario.value.otraReparacion
+          ? quitarEspacios(formulario.value.otraReparacion)
           : '',
 
       tecnico: formulario.value.tecnico,
@@ -343,7 +413,7 @@ function guardarServicio() {
       // La calificación se registra al entregar
       calificacion: null,
 
-      observaciones: formulario.value.observaciones
+      observaciones: quitarEspacios(formulario.value.observaciones)
     }
 
     servicios.value.push(nuevoServicio)
@@ -1198,11 +1268,14 @@ function estrellaActiva(numero, calificacion) {
               v-model="formulario.cliente"
               label="Nombre del cliente *"
               outlined
+              :maxlength="limitesTexto.cliente"
+              counter
               lazy-rules
               :rules="[
-                val =>
-                  !!val ||
-                  'El nombre del cliente es obligatorio'
+                val => validarTexto(
+                  val,
+                  'Escriba el nombre del cliente'
+                )
               ]"
             />
 
@@ -1232,11 +1305,14 @@ function estrellaActiva(numero, calificacion) {
               label="Especifique la marca *"
               placeholder="Ej: Vivo, Infinix, OnePlus..."
               outlined
+              :maxlength="limitesTexto.marca"
+              counter
               lazy-rules
               :rules="[
-                val =>
-                  !!val ||
+                val => validarTexto(
+                  val,
                   'Escriba la marca del equipo'
+                )
               ]"
             />
 
@@ -1248,11 +1324,14 @@ function estrellaActiva(numero, calificacion) {
               label="Modelo *"
               placeholder="Ej: iPhone 12, Galaxy A15..."
               outlined
+              :maxlength="limitesTexto.modelo"
+              counter
               lazy-rules
               :rules="[
-                val =>
-                  !!val ||
-                  'El modelo es obligatorio'
+                val => validarTexto(
+                  val,
+                  'Escriba el modelo del equipo'
+                )
               ]"
             />
 
@@ -1287,11 +1366,14 @@ function estrellaActiva(numero, calificacion) {
               label="Especifique la reparación *"
               placeholder="Ej: Cambio de cámara, reparación de placa..."
               outlined
+              :maxlength="limitesTexto.reparacion"
+              counter
               lazy-rules
               :rules="[
-                val =>
-                  !!val ||
-                  'Especifique cuál es la reparación'
+                val => validarTexto(
+                  val,
+                  'Escriba cuál es la reparación'
+                )
               ]"
             />
 
@@ -1411,7 +1493,7 @@ function estrellaActiva(numero, calificacion) {
                 val =>
                   Number(val) <=
                   Number(formulario.precio) ||
-                  'El abono no puede superar el precio'
+                  'El abono no puede ser igual o mayor al precio'
               ]"
             />
 
@@ -1484,7 +1566,10 @@ function estrellaActiva(numero, calificacion) {
               label="Observaciones"
               placeholder="Ej: pantalla partida, no prende..."
               outlined
+              :maxlength="limitesTexto.observaciones"
+              counter
               autogrow
+              :rules="[validarTextoOpcional]"
             />
 
 
